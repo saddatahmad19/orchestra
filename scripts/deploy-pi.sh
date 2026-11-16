@@ -24,20 +24,17 @@ else
   fi
 fi
 
-if command -v ss >/dev/null && ss -ltn | grep -q ':8788 '; then
-  echo "Port 8788 appears occupied. Inspect it before continuing."
-  exit 1
-fi
-
 docker compose config --quiet
 docker compose up -d --build
 docker compose ps
+BIND_ADDRESS="$(sed -n 's/^ORCHESTRA_BIND_ADDRESS=//p' .env | tail -n 1)"
+BIND_ADDRESS="${BIND_ADDRESS:-127.0.0.1}"
 echo
 echo "Waiting for health endpoint..."
 for attempt in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:8788/health; then
+  if curl -fsS "http://$BIND_ADDRESS:8788/health"; then
     echo
-    echo "Orchestra is healthy at http://127.0.0.1:8788"
+    echo "Orchestra is healthy at http://$BIND_ADDRESS:8788"
     echo "Remote access is not configured. Follow docs/OPERATIONS.md for Tailscale."
     exit 0
   fi
