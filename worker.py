@@ -22,7 +22,7 @@ POLL_SECONDS = max(2, int(os.getenv("ORCHESTRA_WORKER_POLL_SECONDS", "4")))
 HEARTBEAT_SECONDS = max(10, int(os.getenv("ORCHESTRA_WORKER_HEARTBEAT_SECONDS", "30")))
 PROJECT_ROOTS = [Path(p).expanduser().resolve() for p in os.getenv("ORCHESTRA_PROJECT_ROOTS", "").split(os.pathsep) if p]
 MAX_RUNTIME = max(60, int(os.getenv("ORCHESTRA_WORKER_MAX_RUNTIME_SECONDS", "3600")))
-MAX_OUTPUT = 100_000
+MAX_OUTPUT = 90_000
 
 def headers():
     if len(TOKEN) < 32:
@@ -44,11 +44,11 @@ def project_directory(raw: str | None) -> Path:
         raise RuntimeError("Project path is outside ORCHESTRA_PROJECT_ROOTS")
     return candidate
 
-def output_tail(file_obj) -> str:
+def output_tail(file_obj, limit=MAX_OUTPUT // 2) -> str:
     file_obj.flush()
     size = file_obj.tell()
-    file_obj.seek(max(0, size - MAX_OUTPUT))
-    return file_obj.read(MAX_OUTPUT).decode("utf-8", errors="replace")
+    file_obj.seek(max(0, size - limit))
+    return file_obj.read(limit).decode("utf-8", errors="replace")
 
 def run_task(client: httpx.Client, task: dict, executors: dict):
     task_id = task["id"]
@@ -121,7 +121,7 @@ def run_task(client: httpx.Client, task: dict, executors: dict):
             api(client, "POST", f"/api/v1/tasks/{task_id}/complete",
                 json={"worker_id": WORKER_ID, "status": status,
                       "result": result if status == "succeeded" else None,
-                      "error": result if status == "failed" else None})
+                      "error": result[-18000:] if status == "failed" else None})
     except Exception as exc:
         try:
             api(client, "POST", f"/api/v1/tasks/{task_id}/complete",
