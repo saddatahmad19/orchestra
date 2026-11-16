@@ -5,11 +5,9 @@ Raspberry Pi 5 ARM64 Linux, Docker Engine/Compose and Tailscale are already inst
 
 ## Deploy
 1. Clone the repository and enter its root.
-2. Copy .env.example to .env; chmod 600 .env.
-3. Generate two different values with openssl rand -hex 32 and set admin and worker tokens.
-4. Run docker compose up -d --build.
-5. Inspect docker compose ps and docker compose logs -f orchestra.
-6. Check curl -fsS http://127.0.0.1:8788/health.
+2. Run bash scripts/deploy-pi.sh. On first run it creates .env with two distinct random credentials, restricts file permissions, validates Compose, builds and starts the service, and checks health.
+3. Inspect docker compose ps and docker compose logs -f orchestra.
+4. Keep .env private and back up the credentials securely. The script does not modify Tailscale or any other containers.
 
 The Docker image is based on python:3.12-slim and should support ARM64; the actual Pi build must be observed before calling it validated.
 
