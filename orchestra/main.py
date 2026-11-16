@@ -61,7 +61,9 @@ def overview(authorization: str | None = Header(default=None)):
         counts = {r["status"]: r["n"] for r in conn.execute(
             "SELECT status,COUNT(*) n FROM tasks GROUP BY status")}
         workers = [dict(r) for r in conn.execute(
-            "SELECT id,name,hostname,platform,capabilities,last_seen,status FROM workers ORDER BY name")]
+            "SELECT id,name,hostname,platform,capabilities,last_seen,"
+            "CASE WHEN last_seen > ? THEN 'online' ELSE 'offline' END AS status "
+            "FROM workers ORDER BY name", (time.time() - 90,))]
         events = [dict(r) for r in conn.execute("SELECT * FROM events ORDER BY id DESC LIMIT 30")]
     return {"task_counts": counts, "workers": workers, "recent_events": events}
 
@@ -137,6 +139,7 @@ def heartbeat(body: WorkerHeartbeat, authorization: str | None = Header(default=
     worker(authorization)
     now = time.time()
     with db.connect() as conn:
+        existing = conn.execute("SELECT id FROM workers WHERE id=?", (body.worker_id,)).fetchone()
         conn.execute(
             """INSERT INTO workers(id,name,hostname,platform,capabilities,last_seen,status)
             VALUES(?,?,?,?,?,?,'online') ON CONFLICT(id) DO UPDATE SET name=excluded.name,
@@ -144,7 +147,9 @@ def heartbeat(body: WorkerHeartbeat, authorization: str | None = Header(default=
             last_seen=excluded.last_seen,status='online'""",
             (body.worker_id, body.name, body.hostname, body.platform,
              json.dumps(body.capabilities), now))
-        add_event(conn, "worker.heartbeat", "Heartbeat: " + body.name, worker_id=body.worker_id)
+        if not existing:
+            add_event(conn, "worker.registered", "Worker registered: " + body.name,
+                      worker_id=body.worker_id)
     return {"status": "ok", "server_time": now}
 
 @app.post("/api/v1/workers/claim")
@@ -192,7 +197,6 @@ def renew_lease(task_id: str, worker_id: str, authorization: str | None = Header
             raise HTTPException(409, "Worker does not own an active task lease")
         lease = now + settings.lease_seconds
         conn.execute("UPDATE tasks SET lease_until=?,updated_at=? WHERE id=?", (lease, now, task_id))
-        add_event(conn, "task.lease_renewed", "Lease renewed", task_id, worker_id)
     return {"lease_until": lease}
 
 @app.get("/api/v1/workers/tasks/{task_id}/state")
