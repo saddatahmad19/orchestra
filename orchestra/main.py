@@ -219,9 +219,10 @@ def heartbeat(body: WorkerHeartbeat, authorization: str | None = Header(default=
 def claim_task(worker_id: str, authorization: str | None = Header(default=None)):
     worker(authorization)
     with db.connect() as conn:
-        registered = conn.execute("SELECT id FROM workers WHERE id=?", (worker_id,)).fetchone()
+        registered = conn.execute("SELECT id,capabilities FROM workers WHERE id=?", (worker_id,)).fetchone()
     if not registered:
         raise HTTPException(403, "Worker must heartbeat before claiming tasks")
+    capabilities = set(json.loads(registered["capabilities"] or "[]"))
     now = time.time()
     with db.connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
@@ -233,8 +234,10 @@ def claim_task(worker_id: str, authorization: str | None = Header(default=None))
             conn.execute("UPDATE tasks SET status=?,worker_id=NULL,lease_until=NULL,updated_at=? WHERE id=?",
                          (status, now, row["id"]))
             add_event(conn, "task.lease_expired", "Lease expired; moved to " + status, row["id"])
-        row = conn.execute(
-            "SELECT * FROM tasks WHERE status='queued' AND (target_worker_id IS NULL OR target_worker_id=?) ORDER BY created_at LIMIT 1", (worker_id,)).fetchone()
+        candidates = conn.execute(
+            "SELECT * FROM tasks WHERE status='queued' AND (target_worker_id IS NULL OR target_worker_id=?) ORDER BY created_at",
+            (worker_id,)).fetchall()
+        row = next((candidate for candidate in candidates if candidate["engine"] in capabilities), None)
         if row is None:
             conn.execute("COMMIT")
             return {"task": None}
