@@ -1,0 +1,21 @@
+[Unit]
+Description=Orchestra ThinkPad Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=saddat
+WorkingDirectory=/home/saddat/Applications/orchestra
+EnvironmentFile=/home/saddat/.config/orchestra/worker.env
+ExecStart=/home/saddat/Applications/orchestra/.venv/bin/python /home/saddat/Applications/orchestra/worker.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/saddat/Projects
+
+[Install]
+WantedBy=default.target
