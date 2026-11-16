@@ -8,6 +8,6 @@ tests
 docs
 .env
 .env.*
-! .env.example
+!.env.example
 data
 backups
