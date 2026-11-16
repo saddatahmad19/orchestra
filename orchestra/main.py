@@ -176,6 +176,33 @@ def claim_task(worker_id: str, authorization: str | None = Header(default=None))
         conn.execute("COMMIT")
     return {"task": serialize_task(claimed), "lease_until": lease}
 
+@app.post("/api/v1/workers/renew")
+def renew_lease(task_id: str, worker_id: str, authorization: str | None = Header(default=None)):
+    worker(authorization)
+    now = time.time()
+    with db.connect() as conn:
+        row = conn.execute("SELECT status,worker_id FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Task not found")
+        if row["status"] != "running" or row["worker_id"] != worker_id:
+            raise HTTPException(409, "Worker does not own an active task lease")
+        lease = now + settings.lease_seconds
+        conn.execute("UPDATE tasks SET lease_until=?,updated_at=? WHERE id=?", (lease, now, task_id))
+        add_event(conn, "task.lease_renewed", "Lease renewed", task_id, worker_id)
+    return {"lease_until": lease}
+
+@app.get("/api/v1/workers/tasks/{task_id}/state")
+def worker_task_state(task_id: str, worker_id: str,
+                      authorization: str | None = Header(default=None)):
+    worker(authorization)
+    with db.connect() as conn:
+        row = conn.execute("SELECT status,worker_id FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Task not found")
+        if row["worker_id"] != worker_id:
+            raise HTTPException(403, "Task belongs to a different worker")
+        return {"status": row["status"]}
+
 @app.post("/api/v1/tasks/{task_id}/complete")
 def complete_task(task_id: str, body: TaskCompletion,
                   authorization: str | None = Header(default=None)):
