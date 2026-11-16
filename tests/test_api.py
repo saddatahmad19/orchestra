@@ -66,3 +66,21 @@ def test_terminal_task_cannot_be_cancelled_twice(client):
     }).json()
     assert client.post(f"/api/v1/tasks/{task['id']}/cancel", headers=admin()).status_code == 200
     assert client.post(f"/api/v1/tasks/{task['id']}/cancel", headers=admin()).status_code == 409
+
+
+def test_unregistered_worker_cannot_claim(client):
+    response = client.post("/api/v1/workers/claim?worker_id=unknown", headers=worker())
+    assert response.status_code == 403
+
+def test_worker_can_renew_its_own_lease(client):
+    task = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Lease", "prompt": "renew", "approval_required": False
+    }).json()
+    register(client)
+    client.post("/api/v1/workers/claim?worker_id=thinkpad", headers=worker())
+    renewed = client.post("/api/v1/workers/renew?task_id=" + task["id"] + "&worker_id=thinkpad",
+                          headers=worker())
+    assert renewed.status_code == 200
+    wrong = client.post("/api/v1/workers/renew?task_id=" + task["id"] + "&worker_id=other",
+                        headers=worker())
+    assert wrong.status_code == 409
