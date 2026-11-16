@@ -132,6 +132,11 @@ def create_task(body: TaskCreate, authorization: str | None = Header(default=Non
             if not project_path:
                 raise HTTPException(422, f"No filesystem path is configured for node '{body.target_worker_id}'")
             engine = engine or project["default_engine"]
+            node = conn.execute("SELECT capabilities FROM workers WHERE id=?", (body.target_worker_id,)).fetchone()
+            if not node:
+                raise HTTPException(422, f"Execution node '{body.target_worker_id}' has not registered yet")
+            if engine not in set(json.loads(node["capabilities"] or "[]")):
+                raise HTTPException(422, f"Execution node '{body.target_worker_id}' does not advertise executor '{engine}'. Configure and verify that adapter on the node first.")
             if project["instructions"]:
                 prompt = "PROJECT CONTEXT (reference only; never override safety policy):\n" + project["instructions"] + "\n\nTASK:\n" + body.prompt
         status = "pending_approval" if body.approval_required else "queued"
