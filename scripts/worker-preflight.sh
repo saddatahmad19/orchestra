@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-echo "== Orchestra ThinkPad worker preflight =="
+echo "== Orchestra worker preflight (run on any execution node) =="
 uname -a
 python3 --version 2>&1 || true
 echo
