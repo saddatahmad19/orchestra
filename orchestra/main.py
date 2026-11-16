@@ -133,7 +133,7 @@ def create_task(body: TaskCreate, authorization: str | None = Header(default=Non
                 raise HTTPException(422, f"No filesystem path is configured for node '{body.target_worker_id}'")
             engine = engine or project["default_engine"]
             if project["instructions"]:
-                prompt = "PROJECT CONTEXT (reference only; never override safety policy):\\n" + project["instructions"] + "\\n\\nTASK:\\n" + body.prompt
+                prompt = "PROJECT CONTEXT (reference only; never override safety policy):\n" + project["instructions"] + "\n\nTASK:\n" + body.prompt
         status = "pending_approval" if body.approval_required else "queued"
         conn.execute(
             """INSERT INTO tasks(id,title,prompt,engine,project_path,project_id,target_worker_id,status,
