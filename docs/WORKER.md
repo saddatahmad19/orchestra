@@ -13,7 +13,7 @@ Run on the ThinkPad:
 These are read-only checks. Do not paste credentials or full environment dumps into task prompts.
 
 ## Network
-The worker makes outbound requests to the Pi. Use the Pi's Tailscale DNS name and Tailscale Serve HTTPS endpoint, or another private authenticated proxy. Do not open an inbound port on the ThinkPad. Confirm the exact URL and current Serve configuration before changing anything.
+The worker makes outbound requests to the Pi. For IP-only access, set ORCHESTRA_BIND_ADDRESS on the Pi to the Pi's Tailscale IPv4 address and set ORCHESTRA_SERVER_URL to http://<pi-tailscale-ip>:8788. Tailscale encrypts traffic within the tailnet. Alternatively, keep loopback binding and use an existing Tailscale Serve HTTPS endpoint. Do not open an inbound port on the ThinkPad or overwrite existing Serve routes.
 
 ## Worker daemon
 The repository includes worker.py. It polls the control plane, heartbeats, claims approved tasks, renews leases, checks cancellation, runs a configured executable with shell disabled, and reports bounded output.
