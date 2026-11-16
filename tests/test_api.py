@@ -22,6 +22,11 @@ def admin():
 def worker():
     return {"Authorization": "Bearer " + "w" * 40}
 
+def register(client, worker_id="thinkpad"):
+    return client.post("/api/v1/workers/heartbeat", headers=worker(), json={
+        "worker_id": worker_id, "name": worker_id, "capabilities": ["opencode"]
+    })
+
 def test_health_is_public(client):
     assert client.get("/health").json()["status"] == "ok"
 
@@ -35,6 +40,7 @@ def test_approval_prevents_claim_until_approved(client):
     assert created.status_code == 201
     task_id = created.json()["id"]
     assert created.json()["status"] == "pending_approval"
+    register(client)
     assert client.post("/api/v1/workers/claim?worker_id=thinkpad", headers=worker()).json()["task"] is None
     assert client.post(f"/api/v1/tasks/{task_id}/approve", headers=admin()).status_code == 200
     claim = client.post("/api/v1/workers/claim?worker_id=thinkpad", headers=worker()).json()
@@ -44,6 +50,7 @@ def test_completion_requires_assigned_worker(client):
     task = client.post("/api/v1/tasks", headers=admin(), json={
         "title": "Run", "prompt": "safe", "approval_required": False
     }).json()
+    register(client)
     client.post("/api/v1/workers/claim?worker_id=thinkpad", headers=worker())
     wrong = client.post(f"/api/v1/tasks/{task['id']}/complete", headers=worker(),
         json={"worker_id":"other","status":"succeeded","result":"fake"})
