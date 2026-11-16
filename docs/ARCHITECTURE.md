@@ -8,7 +8,7 @@ The Raspberry Pi 5 hosts the Docker control plane, API, dashboard, SQLite state 
 
 ## Components
 - Control plane: Fast API, task state machine, approval endpoints, worker registry, leased claims and event journal.
-- Worker plane (planned): outbound worker daemon, adapter registry, project allowlist, isolated workspaces, process supervision and lease renewal.
+- Worker plane: outbound worker daemon, adapter registry, resolved project-root allowlist, argv-only process supervision, lease renewal and cancellation polling. Git worktrees, OS-level sandboxing and target-host validation remain planned.
 - Agent layer: Hermes, OMH, OpenCode, Claude Code, Codex, Gemini CLI and other installed runtimes behind provider-specific adapters.
 - Integrations (later): GitHub, CI, Sentry/PostHog, Vercel, MCP and browser automation.
 
@@ -28,4 +28,4 @@ pending_approval → queued → running → succeeded | failed. Cancellation is 
 SQLite WAL is suitable for one Pi instance. Do not run multiple API replicas against the same file. Move to PostgreSQL only when concurrency, multi-user requirements or query patterns justify it.
 
 ## Reliability
-Separate admin and worker credentials; fail closed if secrets are missing; claim atomically; bind completion to worker identity; bound output and runtime; retain failed and expired task evidence. The current release does not yet implement worker renewal, worker daemon, migrations or multi-user auth.
+Separate admin and worker credentials; fail closed if secrets are missing; claim atomically; bind completion to worker identity; bound output and runtime; retain failed and expired task evidence. The current release includes the worker daemon and lease renewal, but still lacks schema migrations, multi-user auth, isolated worktrees and OS-level process sandboxing.
