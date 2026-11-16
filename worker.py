@@ -136,7 +136,7 @@ def main():
     capabilities = sorted(executors)
     print("Orchestra worker starting:", WORKER_ID, "executors:", ", ".join(capabilities) or "none")
     last_heartbeat = 0.0
-    with httpx.Client() as client:
+    with httpx.Client(trust_env=False) as client:
         while True:
             now = time.monotonic()
             if now - last_heartbeat >= HEARTBEAT_SECONDS:
