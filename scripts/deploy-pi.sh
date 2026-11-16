@@ -7,6 +7,7 @@ cd "$ROOT"
 command -v docker >/dev/null || { echo "Docker is required and was not found."; exit 1; }
 docker compose version >/dev/null
 command -v openssl >/dev/null || { echo "OpenSSL is required to generate secrets."; exit 1; }
+command -v curl >/dev/null || { echo "curl is required for the health check."; exit 1; }
 
 if [[ ! -f .env ]]; then
   cp .env.example .env
@@ -29,6 +30,10 @@ docker compose up -d --build
 docker compose ps
 BIND_ADDRESS="$(sed -n 's/^ORCHESTRA_BIND_ADDRESS=//p' .env | tail -n 1)"
 BIND_ADDRESS="${BIND_ADDRESS:-127.0.0.1}"
+if [[ "$BIND_ADDRESS" == "0.0.0.0" || "$BIND_ADDRESS" == "::" ]]; then
+  echo "Refusing an all-interface bind. Use loopback or the Pi Tailscale IP."
+  exit 1
+fi
 echo
 echo "Waiting for health endpoint..."
 for attempt in $(seq 1 30); do
