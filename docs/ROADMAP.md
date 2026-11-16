@@ -7,22 +7,24 @@
 - [x] Worker heartbeat, atomic leased claim and worker-bound completion.
 - [x] SQLite persistence and event journal.
 - [x] Dashboard and initial API tests.
-- [ ] CI test and ARM64 image build observed green.
+- [ ] CI test and ARM64 image build observed green on the latest commit.
 
 ## P1 — Harden server
 - [ ] Schema migrations and versioning.
-- [ ] Lease renewal, cancellation polling and worker offline detection.
+- [x] Lease renewal and cancellation polling.
+- [ ] Worker offline detection and status reconciliation.
 - [ ] Concurrent claim/retry/expiry/race tests.
 - [ ] Secure browser session (remove sessionStorage bearer token).
 - [ ] Rate limits, audit identity, event retention and secret redaction.
 
 ## P2 — ThinkPad worker
-- [ ] Outbound worker daemon and stable identity.
-- [ ] Symlink-safe project-root allowlist.
+- [x] Outbound worker daemon and configured worker identity.
+- [x] Resolved-path project-root allowlist.
+- [x] argv-only process invocation, bounded output and runtime limit.
+- [x] Lease renewal and cancellation polling.
 - [ ] Isolated clone/worktree manager.
-- [ ] argv-only process supervisor, bounded logs and runtime.
-- [ ] Lease renewal, cancellation, retries and user-level service.
-- [ ] End-to-end test with harmless fixture repository.
+- [ ] User-level service installation verified on the ThinkPad.
+- [ ] End-to-end test with harmless fixture repository on the actual ThinkPad.
 
 ## P3 — Verified adapters
 - [ ] Inventory actual installed binaries and versions.
