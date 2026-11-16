@@ -11,7 +11,7 @@ A private-first, self-hosted command center for coordinating the AI tools and ma
 ## Foundation implementation
 Implemented: FastAPI service, SQLite WAL persistence, approval-gated task creation, worker heartbeat, atomic leased task claims, completion reporting bound to worker identity, event journal, dashboard, Docker packaging and API tests.
 
-Not yet implemented: production worker daemon, verified provider adapters, lease renewal, streaming logs, project registry, worktree manager, robust migrations, multi-user auth, backup automation and full security hardening. Do not mistake the foundation for a complete autonomous coding platform.
+Implemented in the current branch: outbound worker daemon, lease renewal, project registry with per-node paths, project instructions and default engines, node-targeted dispatch, additive SQLite migrations, structured validation errors, and persistent browser-device admin-key storage. Still planned: verified provider adapters, isolated worktrees, streaming logs, multi-user auth, backup automation and full security hardening. This remains an orchestration foundation, not a fully sandboxed autonomous coding platform.
 
 ## Raspberry Pi quick start
 1. Copy .env.example to .env and run chmod 600 .env.
