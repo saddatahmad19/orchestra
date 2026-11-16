@@ -44,3 +44,25 @@ Orchestra should coordinate the systems already in the user's environment, not c
 ## Claim discipline
 
 For every capability, record one of: implemented and tested, implemented but unverified on target hardware, configured but not tested, planned, unsupported. Never promote a planned or configured capability to working status without an observed end-to-end test.
+
+
+## Upstream source links
+
+### Hermes and Oh My Hermes
+- OMH documentation: https://omher.app/docs/
+- OMH skill catalog: https://omher.app/docs/skills/
+- OMH model routing: https://omher.app/docs/model-routing/
+- OMH source repository: https://github.com/rlaope/oh-my-hermes
+- Hermes delegation: https://hermes-agent.nousresearch.com/docs/user-guide/features/delegation
+- Hermes skills: https://hermes-agent.nousresearch.com/docs/user-guide/features/skills
+- Hermes context files: https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files
+
+### OpenMausBot and xAI
+- OpenMausBot source repository: https://github.com/milind-soni/OpenMausBot
+- OpenMausBot security documentation: https://docs.openmausbot.com/docs/security
+- OpenMausBot provider documentation: https://docs.openmausbot.com/docs/providers
+- xAI Grok Bot overview: https://docs.x.ai/grok-bot/overview
+- xAI Grok Bot security and approvals: https://docs.x.ai/grok-bot/approvals-security-and-privacy
+- xAI Grok Build: https://docs.x.ai/build/overview
+
+Re-check these upstream documents at implementation time. Product features, CLI flags, platform support and security behavior evolve; the user's saved research snapshots are useful context, not a substitute for current official documentation.
