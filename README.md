@@ -28,5 +28,9 @@ Use Python 3.11+, create a virtual environment, install requirements.txt, set bo
 ## Documentation
 Start with AGENTS.md. Then read docs/ARCHITECTURE.md, docs/SECURITY.md, docs/OPERATIONS.md, docs/WORKER.md, docs/ADAPTERS.md, docs/ROADMAP.md and docs/DECISIONS.md.
 
+## ThinkPad worker
+
+The repository includes an outbound worker daemon in worker.py. It is not enabled until you configure the private server URL, worker token, project-root allowlist and exact verified argv arrays for your installed tools. See docs/WORKER.md. The worker does not install tools, use shell execution, or bypass agent permission settings.
+
 ## Critical limitation
-This foundation queues and tracks work but does not yet invoke agent CLIs. The actual ThinkPad environment must be inspected before safe adapters can be implemented. Do not enable arbitrary shell execution as a shortcut.
+This is an early foundation, not a production-ready autonomous coding platform. Project worktrees, per-node credentials, secure browser sessions, secret redaction, process sandboxing, database migrations, and full observability remain open. Run only harmless scratch-project tasks until the release gates in docs/ROADMAP.md are satisfied.
