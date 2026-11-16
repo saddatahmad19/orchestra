@@ -16,6 +16,7 @@ class WorkerHeartbeat(BaseModel):
     capabilities: list[str] = Field(default_factory=list, max_length=100)
 
 class TaskCompletion(BaseModel):
+    worker_id: str = Field(min_length=1, max_length=100)
     status: str
     result: str | None = Field(default=None, max_length=100000)
     error: str | None = Field(default=None, max_length=20000)
