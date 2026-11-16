@@ -8,7 +8,7 @@ services:
     environment:
       ORCHESTRA_DATABASE: /data/orchestra.sqlite3
     ports:
-      - "127.0.0.1:8788:8080"
+      - "${ORCHESTRA_BIND_ADDRESS:-127.0.0.1}:8788:8080"
     volumes:
       - orchestra-data:/data
     read_only: true
