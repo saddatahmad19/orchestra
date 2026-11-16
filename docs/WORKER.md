@@ -38,3 +38,19 @@ Use a user-level systemd service, not root. Keep the token in a permission-restr
 
 ## Known limits
 The worker has one shared worker bearer token, not per-node cryptographic identity. Project worktrees, process-level sandboxing, secret redaction and streaming logs remain planned hardening work. Do not treat a path allowlist as a complete OS sandbox.
+
+
+## Registering the Raspberry Pi as a second execution node
+
+The Pi can also run a worker process alongside the Docker control plane. The control plane remains in its existing container; the worker is a separate host process so it can access only the directories and CLIs available to the Pi user.
+
+1. Check out the same Orchestra revision on the Pi in a normal user-owned directory.
+2. Create a Python virtual environment for Orchestra and install only this repository's Python requirements. This does not install or alter Hermes, OMH, OpenCode, or any other agent CLI.
+3. Copy deploy/worker.env.example to the Pi user's private configuration directory. Set ORCHESTRA_WORKER_ID to a stable value such as pi5, ORCHESTRA_WORKER_NAME to Raspberry Pi 5, ORCHESTRA_SERVER_URL to the Pi's own control-plane URL (127.0.0.1:8788 works when the container is on that same Pi), and use the existing worker token.
+4. Set ORCHESTRA_PROJECT_ROOTS to the exact parent directories the Pi worker may access. Keep it narrow.
+5. Run scripts/worker-preflight.sh on the Pi and inspect installed tool versions and help output. Do not enable an executor until its exact non-interactive invocation and permission behavior are verified.
+6. Start the worker as an unprivileged user service. Do not run it as root, mount the Docker socket, or grant unrestricted filesystem access.
+
+The ThinkPad worker should have a distinct stable ID (for example thinkpad-x1). The Project Registry then allows different paths for pi5 and thinkpad-x1. A task assigned to one node is not claimable by the other.
+
+A Pi worker does not magically gain access to ThinkPad-only tools, and a ThinkPad worker does not gain access to Pi-only paths. Each node must have its own verified executor configuration and local project-root allowlist.
