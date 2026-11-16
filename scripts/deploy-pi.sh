@@ -30,9 +30,13 @@ docker compose up -d --build
 docker compose ps
 BIND_ADDRESS="$(sed -n 's/^ORCHESTRA_BIND_ADDRESS=//p' .env | tail -n 1)"
 BIND_ADDRESS="${BIND_ADDRESS:-127.0.0.1}"
-if [[ "$BIND_ADDRESS" == "0.0.0.0" || "$BIND_ADDRESS" == "::" ]]; then
-  echo "Refusing an all-interface bind. Use loopback or the Pi Tailscale IP."
-  exit 1
+if [[ "$BIND_ADDRESS" != "127.0.0.1" ]]; then
+  command -v tailscale >/dev/null || { echo "Tailscale is required for non-loopback binding."; exit 1; }
+  TAILSCALE_IP="$(tailscale ip -4)"
+  if [[ "$BIND_ADDRESS" != "$TAILSCALE_IP" ]]; then
+    echo "Refusing non-loopback bind that is not this Pi's Tailscale IP."
+    exit 1
+  fi
 fi
 echo
 echo "Waiting for health endpoint..."
