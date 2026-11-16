@@ -38,3 +38,8 @@ pending_approval → queued → running → succeeded | failed. Cancellation is 
 - No idempotency key for task creation.
 - Event retention/pagination and streaming transport are not implemented.
 - A cancelled task is observed by worker polling; cancellation is not instantaneous.
+
+## Project registry
+GET /api/v1/projects lists configured projects. POST /api/v1/projects creates one. PUT /api/v1/projects/{project_id} replaces its configuration. DELETE is refused while tasks reference the project.
+
+Project records contain name, description, repository_url, default_engine, instructions, and node_paths. node_paths maps exact worker IDs to absolute POSIX paths. Task creation can specify project_id and target_worker_id; the server resolves the correct machine-specific path and inherits the project's default engine when no override is supplied.

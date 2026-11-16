@@ -84,3 +84,145 @@ def test_worker_can_renew_its_own_lease(client):
     wrong = client.post("/api/v1/workers/renew?task_id=" + task["id"] + "&worker_id=other",
                         headers=worker())
     assert wrong.status_code == 409
+
+
+def test_project_paths_route_only_to_selected_worker(client):
+    register(client, "thinkpad-x1")
+    register(client, "pi5")
+    project = client.post("/api/v1/projects", headers=admin(), json={
+        "name": "Lintra",
+        "default_engine": "opencode",
+        "instructions": "Use pnpm and run tests.",
+        "node_paths": {
+            "thinkpad-x1": "/home/saddat/projects/lintra",
+            "pi5": "/home/saddat/workspaces/lintra"
+        }
+    })
+    assert project.status_code == 201
+    project_id = project.json()["id"]
+    created = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Inspect Lintra",
+        "prompt": "Review the project and report risks.",
+        "project_id": project_id,
+        "target_worker_id": "pi5",
+        "approval_required": False
+    })
+    assert created.status_code == 201
+    assert client.post("/api/v1/workers/claim?worker_id=thinkpad-x1",
+                       headers=worker()).json()["task"] is None
+    claimed = client.post("/api/v1/workers/claim?worker_id=pi5",
+                          headers=worker()).json()["task"]
+    assert claimed["project_path"] == "/home/saddat/workspaces/lintra"
+    assert claimed["engine"] == "opencode"
+    assert "Use pnpm and run tests." in claimed["prompt"]
+
+
+def test_project_rejects_missing_node_path(client):
+    project = client.post("/api/v1/projects", headers=admin(), json={
+        "name": "Missing mapping",
+        "node_paths": {"thinkpad-x1": "/home/saddat/projects/missing"}
+    }).json()
+    response = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Must not dispatch",
+        "prompt": "Run this",
+        "project_id": project["id"],
+        "target_worker_id": "pi5"
+    })
+    assert response.status_code == 422
+    assert "No filesystem path is configured" in response.json()["detail"]
+
+
+def test_project_cannot_be_deleted_after_tasks_reference_it(client):
+    register(client, "thinkpad-x1")
+    project = client.post("/api/v1/projects", headers=admin(), json={
+        "name": "Retained project",
+        "node_paths": {"thinkpad-x1": "/tmp/project"}
+    }).json()
+    task = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Keep project reference",
+        "prompt": "Do not execute",
+        "project_id": project["id"],
+        "target_worker_id": "thinkpad-x1"
+    })
+    assert task.status_code == 201
+    deleted = client.delete("/api/v1/projects/" + project["id"], headers=admin())
+    assert deleted.status_code == 409
+
+
+def test_project_paths_route_only_to_selected_worker(client):
+    register(client, "thinkpad-x1")
+    register(client, "pi5")
+    project = client.post("/api/v1/projects", headers=admin(), json={
+        "name": "Lintra",
+        "default_engine": "opencode",
+        "instructions": "Use pnpm and run tests.",
+        "node_paths": {
+            "thinkpad-x1": "/home/saddat/projects/lintra",
+            "pi5": "/home/saddat/workspaces/lintra"
+        }
+    })
+    assert project.status_code == 201
+    created = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Inspect Lintra",
+        "prompt": "Review the project and report risks.",
+        "project_id": project.json()["id"],
+        "target_worker_id": "pi5",
+        "approval_required": False
+    })
+    assert created.status_code == 201
+    assert client.post("/api/v1/workers/claim?worker_id=thinkpad-x1",
+                       headers=worker()).json()["task"] is None
+    claimed = client.post("/api/v1/workers/claim?worker_id=pi5",
+                          headers=worker()).json()["task"]
+    assert claimed["project_path"] == "/home/saddat/workspaces/lintra"
+    assert claimed["engine"] == "opencode"
+    assert "Use pnpm and run tests." in claimed["prompt"]
+
+
+def test_project_rejects_missing_node_path(client):
+    project = client.post("/api/v1/projects", headers=admin(), json={
+        "name": "Missing mapping",
+        "node_paths": {"thinkpad-x1": "/home/saddat/projects/missing"}
+    }).json()
+    response = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Must not dispatch",
+        "prompt": "Run this",
+        "project_id": project["id"],
+        "target_worker_id": "pi5"
+    })
+    assert response.status_code == 422
+    assert "No filesystem path is configured" in response.json()["detail"]
+
+
+def test_project_cannot_be_deleted_after_tasks_reference_it(client):
+    register(client, "thinkpad-x1")
+    project = client.post("/api/v1/projects", headers=admin(), json={
+        "name": "Retained project",
+        "node_paths": {"thinkpad-x1": "/tmp/project"}
+    }).json()
+    task = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Keep project reference",
+        "prompt": "Do not execute",
+        "project_id": project["id"],
+        "target_worker_id": "thinkpad-x1"
+    })
+    assert task.status_code == 201
+    deleted = client.delete("/api/v1/projects/" + project["id"], headers=admin())
+    assert deleted.status_code == 409
+
+
+def test_worker_cannot_claim_task_for_unavailable_executor(client):
+    register(client, "thinkpad-opencode")
+    task = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Use unavailable model",
+        "prompt": "This should remain queued.",
+        "engine": "gemini",
+        "approval_required": False
+    })
+    assert task.status_code == 201
+    claim = client.post("/api/v1/workers/claim?worker_id=thinkpad-opencode",
+                        headers=worker())
+    assert claim.status_code == 200
+    assert claim.json()["task"] is None
+    details = client.get("/api/v1/tasks/" + task.json()["id"], headers=admin())
+    assert details.json()["status"] == "queued"
