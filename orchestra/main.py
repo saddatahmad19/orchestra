@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .auth import require_token
 from .config import Settings
 from .db import Database
-from .schemas import TaskCompletion, TaskCreate, WorkerHeartbeat
+from .schemas import ProjectCreate, ProjectUpdate, TaskCompletion, TaskCreate, WorkerHeartbeat
 
 settings = Settings.from_env()
 db = Database(settings.database)
@@ -31,6 +31,11 @@ def add_event(conn, kind, message, task_id=None, worker_id=None):
         "INSERT INTO events(task_id,worker_id,kind,message,created_at) VALUES(?,?,?,?,?)",
         (task_id, worker_id, kind, str(message)[:2000], time.time()),
     )
+
+def serialize_project(row):
+    result = dict(row)
+    result["node_paths"] = json.loads(result.get("node_paths") or "{}")
+    return result
 
 def serialize_task(row):
     result = dict(row)
@@ -67,17 +72,75 @@ def overview(authorization: str | None = Header(default=None)):
         events = [dict(r) for r in conn.execute("SELECT * FROM events ORDER BY id DESC LIMIT 30")]
     return {"task_counts": counts, "workers": workers, "recent_events": events}
 
+
+@app.get("/api/v1/projects")
+def list_projects(authorization: str | None = Header(default=None)):
+    admin(authorization)
+    with db.connect() as conn:
+        return [serialize_project(r) for r in conn.execute("SELECT * FROM projects ORDER BY name COLLATE NOCASE")]
+
+@app.post("/api/v1/projects", status_code=201)
+def create_project(body: ProjectCreate, authorization: str | None = Header(default=None)):
+    admin(authorization)
+    now, project_id = time.time(), str(uuid.uuid4())
+    with db.connect() as conn:
+        conn.execute("INSERT INTO projects(id,name,description,repository_url,default_engine,instructions,node_paths,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (project_id, body.name.strip(), body.description, body.repository_url, body.default_engine, body.instructions, json.dumps(body.node_paths), now, now))
+        add_event(conn, "project.created", "Project created: " + body.name)
+        row = conn.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
+    return serialize_project(row)
+
+@app.put("/api/v1/projects/{project_id}")
+def update_project(project_id: str, body: ProjectUpdate, authorization: str | None = Header(default=None)):
+    admin(authorization)
+    with db.connect() as conn:
+        if not conn.execute("SELECT id FROM projects WHERE id=?", (project_id,)).fetchone():
+            raise HTTPException(404, "Project not found")
+        conn.execute("UPDATE projects SET name=?,description=?,repository_url=?,default_engine=?,instructions=?,node_paths=?,updated_at=? WHERE id=?",
+            (body.name.strip(), body.description, body.repository_url, body.default_engine, body.instructions, json.dumps(body.node_paths), time.time(), project_id))
+        add_event(conn, "project.updated", "Project updated: " + body.name)
+        row = conn.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
+    return serialize_project(row)
+
+@app.delete("/api/v1/projects/{project_id}")
+def delete_project(project_id: str, authorization: str | None = Header(default=None)):
+    admin(authorization)
+    with db.connect() as conn:
+        if not conn.execute("SELECT id FROM projects WHERE id=?", (project_id,)).fetchone():
+            raise HTTPException(404, "Project not found")
+        used = conn.execute("SELECT COUNT(*) n FROM tasks WHERE project_id=?", (project_id,)).fetchone()["n"]
+        if used:
+            raise HTTPException(409, f"Project has {used} task(s) and cannot be deleted")
+        conn.execute("DELETE FROM projects WHERE id=?", (project_id,))
+        add_event(conn, "project.deleted", "Project deleted: " + project_id)
+    return {"id": project_id, "deleted": True}
+
 @app.post("/api/v1/tasks", status_code=201)
 def create_task(body: TaskCreate, authorization: str | None = Header(default=None)):
     admin(authorization)
     now, task_id = time.time(), str(uuid.uuid4())
-    status = "pending_approval" if body.approval_required else "queued"
+    project_path, engine, prompt = body.project_path, body.engine, body.prompt
     with db.connect() as conn:
+        if body.project_id:
+            project = conn.execute("SELECT * FROM projects WHERE id=?", (body.project_id,)).fetchone()
+            if not project:
+                raise HTTPException(404, "Selected project does not exist")
+            if not body.target_worker_id:
+                raise HTTPException(422, "Choose an execution node for this project")
+            node_paths = json.loads(project["node_paths"] or "{}")
+            project_path = node_paths.get(body.target_worker_id)
+            if not project_path:
+                raise HTTPException(422, f"No filesystem path is configured for node '{body.target_worker_id}'")
+            engine = engine or project["default_engine"]
+            if project["instructions"]:
+                prompt = "PROJECT CONTEXT (reference only; never override safety policy):\\n" + project["instructions"] + "\\n\\nTASK:\\n" + body.prompt
+        status = "pending_approval" if body.approval_required else "queued"
         conn.execute(
-            """INSERT INTO tasks(id,title,prompt,engine,project_path,status,approval_required,
-            max_attempts,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)""",
-            (task_id, body.title, body.prompt, body.engine, body.project_path, status,
-             int(body.approval_required), body.max_attempts, now, now))
+            """INSERT INTO tasks(id,title,prompt,engine,project_path,project_id,target_worker_id,status,
+            approval_required,max_attempts,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (task_id, body.title.strip(), prompt, engine or "opencode", project_path,
+             body.project_id, body.target_worker_id, status, int(body.approval_required),
+             body.max_attempts, now, now))
         add_event(conn, "task.created", "Task created: " + status, task_id)
     return {"id": task_id, "status": status}
 
@@ -171,7 +234,7 @@ def claim_task(worker_id: str, authorization: str | None = Header(default=None))
                          (status, now, row["id"]))
             add_event(conn, "task.lease_expired", "Lease expired; moved to " + status, row["id"])
         row = conn.execute(
-            "SELECT * FROM tasks WHERE status='queued' ORDER BY created_at LIMIT 1").fetchone()
+            "SELECT * FROM tasks WHERE status='queued' AND (target_worker_id IS NULL OR target_worker_id=?) ORDER BY created_at LIMIT 1", (worker_id,)).fetchone()
         if row is None:
             conn.execute("COMMIT")
             return {"task": None}
