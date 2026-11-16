@@ -3,14 +3,7 @@
 The ThinkPad is the execution host. Orchestra must not reinstall or upgrade any agent CLI.
 
 ## Inventory
-Run on the ThinkPad:
-- uname -a
-- python3 --version
-- command -v hermes; command -v omh; command -v opencode
-- command -v claude; command -v codex; command -v gemini
-- tailscale status
-
-These are read-only checks. Do not paste credentials or full environment dumps into task prompts.
+Run bash scripts/worker-preflight.sh from the repository on the ThinkPad. It reports installed executable paths and versions for Hermes, OMH, OpenCode, Claude Code, Codex and Gemini CLI, plus Tailscale status. It is read-only and does not install, update or authenticate anything. Do not paste credentials or full environment dumps into task prompts.
 
 ## Network
 The worker makes outbound requests to the Pi. For IP-only access, set ORCHESTRA_BIND_ADDRESS on the Pi to the Pi's Tailscale IPv4 address and set ORCHESTRA_SERVER_URL to http://<pi-tailscale-ip>:8788. Tailscale encrypts traffic within the tailnet. Alternatively, keep loopback binding and use an existing Tailscale Serve HTTPS endpoint. Do not open an inbound port on the ThinkPad or overwrite existing Serve routes.
