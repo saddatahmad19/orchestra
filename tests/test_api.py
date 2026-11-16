@@ -209,3 +209,20 @@ def test_project_cannot_be_deleted_after_tasks_reference_it(client):
     assert task.status_code == 201
     deleted = client.delete("/api/v1/projects/" + project["id"], headers=admin())
     assert deleted.status_code == 409
+
+
+def test_worker_cannot_claim_task_for_unavailable_executor(client):
+    register(client, "thinkpad-opencode")
+    task = client.post("/api/v1/tasks", headers=admin(), json={
+        "title": "Use unavailable model",
+        "prompt": "This should remain queued.",
+        "engine": "gemini",
+        "approval_required": False
+    })
+    assert task.status_code == 201
+    claim = client.post("/api/v1/workers/claim?worker_id=thinkpad-opencode",
+                        headers=worker())
+    assert claim.status_code == 200
+    assert claim.json()["task"] is None
+    details = client.get("/api/v1/tasks/" + task.json()["id"], headers=admin())
+    assert details.json()["status"] == "queued"
