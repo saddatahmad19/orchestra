@@ -7,7 +7,10 @@ Orchestra is a durable coordination plane for human-directed work across existin
 The Raspberry Pi 5 hosts the Docker control plane, API, dashboard, SQLite state and event journal. The ThinkPad connects outbound over Tailscale as an execution worker and invokes tools already installed there. The browser is a client, not a state owner.
 
 ## Components
-- Control plane: Fast API, task state machine, approval endpoints, worker registry, leased claims and event journal.
+- Control plane: FastAPI, project registry, task state machine, approval endpoints, worker registry, node-targeted leased claims and event journal.
+- Project registry: project metadata, default engine, reusable instructions, and absolute filesystem paths keyed by exact worker ID.
+
+A task snapshots the selected project's path for its target worker. The worker claim query filters assigned tasks by worker ID, and the worker independently validates the resolved path against its own project-root allowlist.
 - Worker plane: outbound worker daemon, adapter registry, resolved project-root allowlist, argv-only process supervision, lease renewal and cancellation polling. Git worktrees, OS-level sandboxing and target-host validation remain planned.
 - Agent layer: Hermes, OMH, OpenCode, Claude Code, Codex, Gemini CLI and other installed runtimes behind provider-specific adapters.
 - Integrations (later): GitHub, CI, Sentry/PostHog, Vercel, MCP and browser automation.
