@@ -18,6 +18,8 @@ The worker makes outbound requests to the Pi. Use the Pi's Tailscale DNS name an
 ## Worker daemon
 The repository includes worker.py. It polls the control plane, heartbeats, claims approved tasks, renews leases, checks cancellation, runs a configured executable with shell disabled, and reports bounded output.
 
+Start from deploy/worker.env.example. Copy it to ~/.config/orchestra/worker.env, set restrictive permissions (chmod 600), and fill in the actual private Tailscale URL and worker token. Do not commit the populated file.
+
 Required environment:
 - ORCHESTRA_SERVER_URL: private URL reachable from the ThinkPad.
 - ORCHESTRA_WORKER_TOKEN: the worker token generated on the Pi.
