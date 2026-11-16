@@ -4,7 +4,7 @@ A private-first, self-hosted command center for coordinating the AI tools and ma
 
 ## Topology
 - Raspberry Pi 5: always-on Docker control plane, API, dashboard, approvals, event history and durable state.
-- ThinkPad X1: remote worker that uses agent CLIs already installed on that host.
+- ThinkPad X1 and Raspberry Pi 5: independently registered workers with their own filesystem paths and locally configured executors.
 - Existing runtimes: Hermes / Oh My Hermes, OpenCode, Claude Code, Codex, Gemini CLI and other configured executors remain independent.
 - Network: Tailscale private access. No public admin endpoint.
 
@@ -28,9 +28,9 @@ Use Python 3.11+, create a virtual environment, install requirements.txt, set bo
 ## Documentation
 Start with AGENTS.md. Then read docs/ARCHITECTURE.md, docs/SECURITY.md, docs/OPERATIONS.md, docs/WORKER.md, docs/ADAPTERS.md, docs/ROADMAP.md and docs/DECISIONS.md.
 
-## ThinkPad worker
+## Execution workers (ThinkPad and Raspberry Pi)
 
 The repository includes an outbound worker daemon in worker.py. It is not enabled until you configure the private server URL, worker token, project-root allowlist and exact verified argv arrays for your installed tools. See docs/WORKER.md. The worker does not install tools, use shell execution, or bypass agent permission settings.
 
 ## Critical limitation
-This is an early foundation, not a production-ready autonomous coding platform. Project worktrees, per-node credentials, secure browser sessions, secret redaction, process sandboxing, database migrations, and full observability remain open. Run only harmless scratch-project tasks until the release gates in docs/ROADMAP.md are satisfied.
+This is an early foundation, not a production-ready autonomous coding platform. Project worktrees, per-node cryptographic credentials, secure browser sessions, secret redaction, OS-level process sandboxing, streaming logs, backup automation, and full observability remain open. Additive SQLite migrations are implemented, but a formal migration framework is not. Run only harmless scratch-project tasks until the release gates in docs/ROADMAP.md are satisfied.
