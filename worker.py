@@ -88,22 +88,30 @@ def run_task(client: httpx.Client, task: dict, executors: dict):
                     except subprocess.TimeoutExpired:
                         proc.kill()
                     raise TimeoutError("Executor exceeded worker runtime limit")
-                if now >= next_renew:
-                    api(client, "POST", "/api/v1/workers/renew",
-                        params={"task_id": task_id, "worker_id": WORKER_ID})
-                    next_renew = now + 45
-                if now >= next_state:
-                    state = api(client, "GET", f"/api/v1/workers/tasks/{task_id}/state",
-                                params={"worker_id": WORKER_ID})
-                    if state["status"] == "cancelled":
-                        cancelled = True
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=10)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
-                        break
-                    next_state = now + 8
+                try:
+                    if now >= next_renew:
+                        api(client, "POST", "/api/v1/workers/renew",
+                            params={"task_id": task_id, "worker_id": WORKER_ID})
+                        next_renew = now + 45
+                    if now >= next_state:
+                        state = api(client, "GET", f"/api/v1/workers/tasks/{task_id}/state",
+                                    params={"worker_id": WORKER_ID})
+                        if state["status"] == "cancelled":
+                            cancelled = True
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=10)
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                            break
+                        next_state = now + 8
+                except Exception as control_error:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                    raise RuntimeError("Control plane became unavailable; executor was stopped") from control_error
                 time.sleep(1)
             return_code = proc.wait()
             result = "stdout:\n" + output_tail(stdout_file) + "\nstderr:\n" + output_tail(stderr_file)
