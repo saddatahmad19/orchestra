@@ -150,6 +150,10 @@ def heartbeat(body: WorkerHeartbeat, authorization: str | None = Header(default=
 @app.post("/api/v1/workers/claim")
 def claim_task(worker_id: str, authorization: str | None = Header(default=None)):
     worker(authorization)
+    with db.connect() as conn:
+        registered = conn.execute("SELECT id FROM workers WHERE id=?", (worker_id,)).fetchone()
+    if not registered:
+        raise HTTPException(403, "Worker must heartbeat before claiming tasks")
     now = time.time()
     with db.connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
